@@ -5,8 +5,11 @@
 #  1. Checksums and their file paths that are present in the first file but not in the second one
 
 import sys
+import logging
 
-class Entry:
+
+
+class entry:
     """Represents an entry from an input file"""
     def __init__(self, sha, path):
         self.sha = sha
@@ -18,11 +21,23 @@ class Entry:
     def getPath(self):
         return self.path
 
-if len(sys.argv) != 3:
-    print("Incorrect usage, specify two files!")
-    sys.exit(1)
+
+
+def isValidHash(word):
+    return len(word) == 64
+
+
+
+def twoWordsFromLine(line):
+    words = line.strip().split()
+    if len(words) != 2:
+        raise f'Line contains more than 2 words: "{line}"'
+    return words
+
+
 
 def readEntries(fileHandle):
+    """Read entries from a file handle stream"""
     entries = []
 
     while True:
@@ -30,11 +45,17 @@ def readEntries(fileHandle):
         if not line:
             return entries
 
-        sha = line[:64]
-        path = line[66:-1]
-        entry = Entry(sha, path)
+        words = twoWordsFromLine(line)
+        if not isValidHash(words[0]):
+            logging.error(f'found a weird line without hash: "{line}"')
+            continue
 
-        entries.append(entry)
+        sha = words[0]
+        path = words[1]
+        newEntry = entry(sha, path)
+        entries.append(newEntry)
+
+
 
 def listToDict(listOfEntries):
     dic = {}
@@ -45,31 +66,39 @@ def listToDict(listOfEntries):
             dic[entry.getSha()] = [entry.getPath()]
     return dic
 
-oldBackup = sys.argv[1]
-newBackup = sys.argv[2]
 
-print("old backup: " + oldBackup + ", new backup: " + newBackup)
 
-oldEntries = []
-newEntries = []
+if __name__ == '__main__':
+    if len(sys.argv) != 3:
+        print("Incorrect usage, specify two files!")
+        sys.exit(1)
 
-with open(oldBackup) as ob:
-    oldEntries = readEntries(ob)
+    oldBackup = sys.argv[1]
+    newBackup = sys.argv[2]
 
-with open(newBackup) as nb:
-    newEntries = readEntries(nb)
+    print("old backup: " + oldBackup + ", new backup: " + newBackup)
 
-print("old entries: " + str(len(oldEntries)) + ", new entries: " + str(len(newEntries)))
+    oldEntries = []
+    newEntries = []
 
-# Create a dictionary of entries
-oldHashMap = listToDict(oldEntries)
-newHashMap = listToDict(newEntries)
+    with open(oldBackup) as ob:
+        oldEntries = readEntries(ob)
 
-# Find entries that are present in the old dictionary, but are missing in the second one:
-for sha in oldHashMap:
-    if not sha in newHashMap:
-        print(sha + " " + str(oldHashMap[sha]))
+        with open(newBackup) as nb:
+            newEntries = readEntries(nb)
 
+    print("old entries: " + str(len(oldEntries)) + ", new entries: " + str(len(newEntries)))
+
+    # Create a dictionary of entries
+    oldHashMap = listToDict(oldEntries)
+    newHashMap = listToDict(newEntries)
+
+    # Find entries that are present in the old dictionary, but are missing in the second one:
+    for sha in oldHashMap:
+        if not sha in newHashMap:
+            print(sha + " " + str(oldHashMap[sha]))
+
+# TODO: add a test for this function
 # Find entries that are duplicate within old file and print them out
 def findDupeHashes(dic):
     for sha in dic:
