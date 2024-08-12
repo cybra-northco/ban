@@ -9,7 +9,12 @@ import logging
 
 
 
-class entry:
+class SpaceNotFound(Exception):
+    pass
+
+
+
+class Entry:
     """Represents an entry from an input file"""
     def __init__(self, sha, path):
         self.sha = sha
@@ -28,11 +33,11 @@ def isValidHash(word):
 
 
 
-def twoWordsFromLine(line):
-    words = line.strip().split()
-    if len(words) != 2:
-        raise f'Line contains more than 2 words: "{line}"'
-    return words
+def parseHashAndPath(line):
+    spacePosition = line.find(' ')
+    if spacePosition == -1:
+        raise SpaceNotFound(f'Input line does not contain a space: "{line}"')
+    return line[:spacePosition], line[spacePosition+1:]
 
 
 
@@ -45,19 +50,20 @@ def readEntries(fileHandle):
         if not line:
             return entries
 
-        words = twoWordsFromLine(line)
-        if not isValidHash(words[0]):
+        fileHash, filePath = parseHashAndPath(line)
+        if not isValidHash(fileHash):
             logging.error(f'found a weird line without hash: "{line}"')
             continue
 
-        sha = words[0]
-        path = words[1]
-        newEntry = entry(sha, path)
+        newEntry = Entry(fileHash, filePath)
         entries.append(newEntry)
 
 
 
 def listToDict(listOfEntries):
+    """Returns a dictionary with has as a key and the value beiing a list of paths
+    sharing the same hash"""
+
     dic = {}
     for entry in listOfEntries:
         if entry.getSha() in dic:
@@ -82,10 +88,16 @@ if __name__ == '__main__':
     newEntries = []
 
     with open(oldBackup) as ob:
-        oldEntries = readEntries(ob)
+        try:
+            oldEntries = readEntries(ob)
+        except SpaceNotFound as e:
+            raise RuntimeError(f'Input file {oldBackup} has a bad line: {str(e)}')
 
-        with open(newBackup) as nb:
+    with open(newBackup) as nb:
+        try:
             newEntries = readEntries(nb)
+        except SpaceNotFound as e:
+            raise RuntimeError(f'Input file {newBackup} has a bad line: {str(e)}')
 
     print("old entries: " + str(len(oldEntries)) + ", new entries: " + str(len(newEntries)))
 
@@ -98,7 +110,8 @@ if __name__ == '__main__':
         if not sha in newHashMap:
             print(sha + " " + str(oldHashMap[sha]))
 
-# TODO: add a test for this function
+
+
 # Find entries that are duplicate within old file and print them out
 def findDupeHashes(dic):
     for sha in dic:
