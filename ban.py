@@ -36,6 +36,9 @@ class Entry:
     def getPath(self):
         return self.path
 
+    def __repr__(self):
+        return f'{self.sha} {self.path}'
+
 
 
 def isValidHash(word):
@@ -46,7 +49,8 @@ def isValidHash(word):
 def parseHashAndPath(line):
     spacePosition = line.find(' ')
     if spacePosition == -1:
-        raise SpaceNotFound(f'Input line does not contain a space: "{line}"')
+        logging.error(f'Input line does not contain a space: "{line}"')
+        #raise SpaceNotFound(f'Input line does not contain a space: "{line}"')
     return line[:spacePosition], line[spacePosition+1:]
 
 
@@ -83,6 +87,13 @@ def listToDict(listOfEntries):
             dic[entry.getSha()] = [entry.getPath()]
     return dic
 
+def getOldEntriesMissingFromNew(old, new):
+    missing = []
+    for sha in old:
+        if not sha in new:
+            missing.append(Entry(sha, old[sha]))
+    return missing
+
 
 
 if __name__ == '__main__':
@@ -117,9 +128,8 @@ if __name__ == '__main__':
     newHashMap = listToDict(newEntries)
 
     # Find entries that are present in the old dictionary, but are missing in the second one:
-    for sha in oldHashMap:
-        if not sha in newHashMap:
-            print(sha + " " + str(oldHashMap[sha]))
+    oldEntriesMissingFromNew = getOldEntriesMissingFromNew(oldHashMap, newHashMap)
+    for e in oldEntriesMissingFromNew: print(e)
 
 
 
