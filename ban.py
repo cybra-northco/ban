@@ -65,7 +65,8 @@ def readEntries(fileHandle):
             logging.error(f'found a weird line without hash: "{line}"')
             continue
 
-        newEntry = Entry(fileHash, filePath)
+        # The -1 and the very end removes the new line \n character introduced by the readline() method
+        newEntry = Entry(fileHash, filePath[:-1])
         entries.append(newEntry)
 
 
