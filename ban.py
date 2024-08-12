@@ -4,6 +4,16 @@
 # Will output:
 #  1. Checksums and their file paths that are present in the first file but not in the second one
 
+# Glossary
+# Snapshot - a copy of data. When you copy your data to a backup device, the resulting files are called a snapshot.
+# Snapshot entry - a representation of a file from a snapshot.
+#   The snapshot entry has a hash and a path inside of the snapshot.
+# Snapshot diff - a list of snapshot entries that exist in one snapshot,
+#   but are missing in another one.
+# Missing snapshot entry - means that the file that existed at a path and had a hash now either:
+#   - has the same hash but a different path (was moved)
+#   - has the same path but a different hash (was modified)
+
 import sys
 import logging
 
