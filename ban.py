@@ -3,6 +3,7 @@
 #   <checksum> <file path>
 # Will output:
 #  1. Checksums and their file paths that are present in the first file but not in the second one
+#  2. Bash commands to copy the changed files to a different location
 
 # Glossary
 # Snapshot - a copy of data. When you copy your data to a backup device, the resulting files are called a snapshot.
@@ -17,6 +18,7 @@
 
 
 import sys
+import os
 import logging
 
 
@@ -131,6 +133,17 @@ def filterEntries(entries, pathsToSkip):
 
 
 
+def bashPrintMissingEntry(entry, targetPath):
+    '''Print a ready for execution bash command to copy a missing file'''
+
+    fileName = os.path.basename(entry.getPath())
+    targetFolder = os.path.join(targetPath, os.path.dirname(entry.getPath()))
+    targetFile = os.path.join(targetFolder, fileName)
+
+    return f'mkdir -p {targetFolder} && cp -a {entry.getPath()} {targetFile}'
+
+
+
 if __name__ == '__main__':
     if len(sys.argv) != 3:
         print("Incorrect usage, specify two files!")
@@ -168,7 +181,7 @@ if __name__ == '__main__':
     pathsToSkip = ['./seagate-backup-2021-05-03/SteamLibrary']#/steamapps/common/Counter-Strike Global Offensive/']
     missingEntriesFiltered = filterEntries(oldEntriesMissingFromNew, pathsToSkip)
 
-    for e in missingEntriesFiltered: print(e)
+    for e in missingEntriesFiltered: print(bashPrintMissingEntry(e, '/node/save/'))
 
 
 
