@@ -5,13 +5,13 @@ import unittest
 
 
 
-def getEntryEqualityFunc(obj):
+def get_entry_equality_func(obj):
     """The comparator function is used to compare the ban.Entry objects"""
     def comparator(leftEntry, rightEntry, msg=None):
-        if leftEntry.getSha() != rightEntry.getSha():
-            raise obj.failureException(f'SHA "{leftEntry.getSha()}" != "{rightEntry.getSha()}"')
+        if leftEntry.get_sha() != rightEntry.get_sha():
+            raise obj.failureException(f'SHA "{leftEntry.get_sha()}" != "{rightEntry.get_sha()}"')
 
-        if leftEntry.getPath() != rightEntry.getPath():
+        if leftEntry.get_path() != rightEntry.get_path():
             raise obj.failureException(f'path "{leftEntry.getPath()}" != "{rightEntry.getPath()}"')
     return comparator
 
@@ -21,7 +21,7 @@ class TestEquality(unittest.TestCase):
     """Test the comparator function from this test suite"""
 
     def setUp(self):
-        self.addTypeEqualityFunc(ban.Entry, getEntryEqualityFunc(self))
+        self.addTypeEqualityFunc(ban.Entry, get_entry_equality_func(self))
 
     def testEqual(self):
         left = ban.Entry('123', '/path')
@@ -42,13 +42,13 @@ class TestFiltering(unittest.TestCase):
         pathToExclude = ['./some/path']
         entries = [ban.Entry('123', './path1'),
                    ban.Entry('234', './path2')]
-        result = ban.filterEntries(entries, pathToExclude)
+        result = ban.filter_entries(entries, pathToExclude)
 
         self.assertEqual(len(result), 2)
-        self.assertEqual(result[0].getSha(), '123')
-        self.assertEqual(result[0].getPath(), './path1')
-        self.assertEqual(result[1].getSha(), '234')
-        self.assertEqual(result[1].getPath(), './path2')
+        self.assertEqual(result[0].get_sha(), '123')
+        self.assertEqual(result[0].get_path(), './path1')
+        self.assertEqual(result[1].get_sha(), '234')
+        self.assertEqual(result[1].get_path(), './path2')
 
     def testFilterOutSome(self):
         pathToExclude = ['./some/path']
@@ -59,28 +59,28 @@ class TestFiltering(unittest.TestCase):
                    ban.Entry('901', './some/path/'),     # removed
                    ban.Entry('251', './some/path/file'), # removed
                    ban.Entry('982', './some/other')]     # stays
-        result = ban.filterEntries(entries, pathToExclude)
+        result = ban.filter_entries(entries, pathToExclude)
 
         self.assertEqual(len(result), 3)
-        self.assertEqual(result[0].getSha(), '123')
-        self.assertEqual(result[0].getPath(), './path1')
-        self.assertEqual(result[1].getSha(), '567')
-        self.assertEqual(result[1].getPath(), './path3')
-        self.assertEqual(result[2].getSha(), '982')
-        self.assertEqual(result[2].getPath(), './some/other')
+        self.assertEqual(result[0].get_sha(), '123')
+        self.assertEqual(result[0].get_path(), './path1')
+        self.assertEqual(result[1].get_sha(), '567')
+        self.assertEqual(result[1].get_path(), './path3')
+        self.assertEqual(result[2].get_sha(), '982')
+        self.assertEqual(result[2].get_path(), './some/other')
 
 
 
 class TestRead(unittest.TestCase):
     def setUp(self):
-        self.addTypeEqualityFunc(ban.Entry, getEntryEqualityFunc(self))
+        self.addTypeEqualityFunc(ban.Entry, get_entry_equality_func(self))
 
     def testReadNormal(self):
         """Test that a normal line is read just fine"""
 
         buf = io.StringIO('0123456789012345678901234567890123456789012345678901234567890123 /path/to/file')
 
-        entries = ban.readEntries(buf)
+        entries = ban.read_entries(buf)
         expected = ban.Entry('0123456789012345678901234567890123456789012345678901234567890123', '/path/to/file')
 
         self.assertEqual(entries[0], expected)
@@ -91,7 +91,7 @@ class TestRead(unittest.TestCase):
 
         buf = io.StringIO('0123456789012345678901234567890123456789012345678901234567890123 /path/to/file with spaces')
 
-        entries = ban.readEntries(buf)
+        entries = ban.read_entries(buf)
         expected = ban.Entry('0123456789012345678901234567890123456789012345678901234567890123', '/path/to/file with spaces')
 
         self.assertEqual(entries[0], expected)
@@ -106,7 +106,7 @@ class TestRead(unittest.TestCase):
 
         buf = io.StringIO('0123456789012345678901234567890123456789012345678901234567890123  /path/to/file with spaces')
 
-        entries = ban.readEntries(buf)
+        entries = ban.read_entries(buf)
         expected = ban.Entry('0123456789012345678901234567890123456789012345678901234567890123', '/path/to/file with spaces')
 
         self.assertEqual(entries[0], expected)

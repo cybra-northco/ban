@@ -37,10 +37,10 @@ class Entry:
         self.sha = sha
         self.path = path
 
-    def getSha(self):
+    def get_sha(self):
         return self.sha
 
-    def getPath(self):
+    def get_path(self):
         return self.path
 
     def __repr__(self):
@@ -48,71 +48,71 @@ class Entry:
 
 
 
-def isValidHash(word):
+def is_valid_hash(word):
     return len(word) == 64
 
 
 
-def parseHashAndPath(line):
-    twoSpacePosition = line.find('  ')
-    if twoSpacePosition != -1:
+def parse_hash_and_path(line):
+    two_spaces = line.find('  ')
+    if two_spaces != -1:
         # +2 because we want first char after two spaces
-        return line[:twoSpacePosition], line[twoSpacePosition+2:]
+        return line[:two_spaces], line[two_spaces+2:]
 
     logging.error(f'Input line does not contain a normal two-space separator: "{line}"')
 
-    spacePosition = line.find(' ')
-    if spacePosition != -1:
+    space = line.find(' ')
+    if space != -1:
         # +1 because we want the first char after the space
-        return line[:spacePosition], line[spacePosition+1:]
+        return line[:space], line[space+1:]
 
     logging.error(f'Input line also does not contain a single-space separator: "{line}"')
     return None, None
 
 
 
-def readEntries(fileHandle):
+def read_entries(stream):
     """Read entries from a file handle stream"""
     entries = []
 
     while True:
-        line = fileHandle.readline()
+        line = stream.readline()
         if not line:
             return entries
 
-        fileHash, filePath = parseHashAndPath(line)
-        if not fileHash or not filePath:
+        file_hash, file_path = parse_hash_and_path(line)
+        if not file_hash or not file_path:
             logging.error('continuing to next line...')
             continue
 
-        if not isValidHash(fileHash):
+        if not is_valid_hash(file_hash):
             logging.error(f'found a weird line without hash: "{line}"')
             continue
 
         # The -1 and the very end removes the new line \n character introduced by the readline() method
-        if filePath[-1] == '\n':
-            newEntry = Entry(fileHash, filePath[:-1])
+        if file_path[-1] == '\n':
+            new_entry = Entry(file_hash, file_path[:-1])
         else:
-            newEntry = Entry(fileHash, filePath)
-        entries.append(newEntry)
+            new_entry = Entry(file_hash, file_path)
+        entries.append(new_entry)
 
 
 
-def listToDict(listOfEntries):
+def list_to_dict(entries):
     """Returns a dictionary with has as a key and the value beiing a list of paths
     sharing the same hash"""
 
     dic = {}
-    for entry in listOfEntries:
-        if entry.getSha() in dic:
-            dic[entry.getSha()].append(entry.getPath())
+    for entry in entries:
+        if entry.get_sha() in dic:
+            dic[entry.get_sha()].append(entry.get_path())
         else:
-            dic[entry.getSha()] = [entry.getPath()]
+            dic[entry.get_sha()] = [entry.get_path()]
     return dic
 
 
 
-def getOldEntriesMissingFromNew(old, new):
+def get_missing_entries(old, new):
     missing = []
     for sha in old:
         if not sha in new:
@@ -122,27 +122,27 @@ def getOldEntriesMissingFromNew(old, new):
 
 
 
-def keepPath(path, pathsToSkip):
-    for p in pathsToSkip:
+def keep_path(path, paths_to_skip):
+    for p in paths_to_skip:
         if path.startswith(p):
             return False
     return True
 
 
 
-def filterEntries(entries, paths_to_skip):
-    return [x for x in entries if keepPath(x.getPath(), paths_to_skip)]
+def filter_entries(entries, paths_to_skip):
+    return [x for x in entries if keep_path(x.get_path(), paths_to_skip)]
 
 
 
-def bashPrintMissingEntry(entry, targetPath):
+def bash_print_missing(entry, target_path):
     '''Print a ready for execution bash command to copy a missing file'''
 
-    fileName = os.path.basename(entry.getPath())
-    targetFolder = os.path.join(targetPath, os.path.dirname(entry.getPath()))
+    fileName = os.path.basename(entry.get_path())
+    targetFolder = os.path.join(target_path, os.path.dirname(entry.get_path()))
     targetFile = os.path.join(targetFolder, fileName)
 
-    return f'mkdir -p {targetFolder} && cp -a {entry.getPath()} {targetFile}'
+    return f'mkdir -p {targetFolder} && cp -a {entry.get_path()} {targetFile}'
 
 
 
@@ -177,12 +177,12 @@ if __name__ == '__main__':
     late_entries = []
 
     try:
-        early_entries= readEntries(args.early_hashes)
+        early_entries= read_entries(args.early_hashes)
     except SpaceNotFound as e:
         raise RuntimeError(f'Early hashes file has a bad line: {str(e)}')
 
     try:
-        late_entries = readEntries(args.late_hashes)
+        late_entries = read_entries(args.late_hashes)
     except SpaceNotFound as e:
         raise RuntimeError(f'Late hashes file has a bad line: {str(e)}')
 
@@ -190,15 +190,15 @@ if __name__ == '__main__':
     print(f'Number of late entries: {len(late_entries)}')
 
     # Create a dictionary of entries
-    early_hash_map = listToDict(early_entries)
-    late_hash_map = listToDict(late_entries)
+    early_hash_map = list_to_dict(early_entries)
+    late_hash_map = list_to_dict(late_entries)
 
     # Find entries that are present in the old dictionary, but are missing in the second one:
-    oldEntriesMissingFromNew = getOldEntriesMissingFromNew(early_hash_map, late_hash_map)
+    missing_entries = get_missing_entries(early_hash_map, late_hash_map)
 
-    missingEntriesFiltered = filterEntries(oldEntriesMissingFromNew, args.skip)
+    filtered_entries = filter_entries(missing_entries, args.skip)
 
-    for e in missingEntriesFiltered: print(bashPrintMissingEntry(e, '/node/save/'))
+    for e in filtered_entries: print(bash_print_missing(e, '/node/save/'))
 
 
 
