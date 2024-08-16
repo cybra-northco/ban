@@ -124,15 +124,14 @@ def getOldEntriesMissingFromNew(old, new):
 
 def keepPath(path, pathsToSkip):
     for p in pathsToSkip:
-        logging.error(f'"{path}" startswith "{p}"')
         if path.startswith(p):
             return False
     return True
 
 
 
-def filterEntries(entries, pathsToSkip):
-    return [x for x in entries if keepPath(x.getPath(), pathsToSkip)]
+def filterEntries(entries, paths_to_skip):
+    return [x for x in entries if keepPath(x.getPath(), paths_to_skip)]
 
 
 
@@ -163,7 +162,9 @@ def get_parsed_arguments():
                         help='hash file for the late snapshot')
 
     parser.add_argument('-s', '--skip',
-                        help='paths from early snapshot to ingnore when comparing with late snapshot')
+                        action='append',
+                        default=[],
+                        help='paths from early snapshot to ingnore when comparing with late snapshot, can be specified multiple times')
 
     return parser.parse_args()
 
@@ -195,8 +196,7 @@ if __name__ == '__main__':
     # Find entries that are present in the old dictionary, but are missing in the second one:
     oldEntriesMissingFromNew = getOldEntriesMissingFromNew(early_hash_map, late_hash_map)
 
-    pathsToSkip = ['./seagate-backup-2021-05-03/SteamLibrary']#/steamapps/common/Counter-Strike Global Offensive/']
-    missingEntriesFiltered = filterEntries(oldEntriesMissingFromNew, pathsToSkip)
+    missingEntriesFiltered = filterEntries(oldEntriesMissingFromNew, args.skip)
 
     for e in missingEntriesFiltered: print(bashPrintMissingEntry(e, '/node/save/'))
 
