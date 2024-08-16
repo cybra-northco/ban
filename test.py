@@ -17,7 +17,7 @@ def getEntryEqualityFunc(obj):
 
 
 
-class testEquality(unittest.TestCase):
+class TestEquality(unittest.TestCase):
     """Test the comparator function from this test suite"""
 
     def setUp(self):
@@ -37,6 +37,40 @@ class testEquality(unittest.TestCase):
 
 
 
+class TestFiltering(unittest.TestCase):
+    def testAllAllowed(self):
+        pathToExclude = ['./some/path']
+        entries = [ban.Entry('123', './path1'),
+                   ban.Entry('234', './path2')]
+        result = ban.filterEntries(entries, pathToExclude)
+
+        self.assertEqual(len(result), 2)
+        self.assertEqual(result[0].getSha(), '123')
+        self.assertEqual(result[0].getPath(), './path1')
+        self.assertEqual(result[1].getSha(), '234')
+        self.assertEqual(result[1].getPath(), './path2')
+
+    def testFilterOutSome(self):
+        pathToExclude = ['./some/path']
+        entries = [ban.Entry('123', './path1'),          # stays
+                   ban.Entry('234', './some/path'),      # removed
+                   ban.Entry('567', './path3'),          # stays
+                   ban.Entry('890', './some/path/1'),    # removed
+                   ban.Entry('901', './some/path/'),     # removed
+                   ban.Entry('251', './some/path/file'), # removed
+                   ban.Entry('982', './some/other')]     # stays
+        result = ban.filterEntries(entries, pathToExclude)
+
+        self.assertEqual(len(result), 3)
+        self.assertEqual(result[0].getSha(), '123')
+        self.assertEqual(result[0].getPath(), './path1')
+        self.assertEqual(result[1].getSha(), '567')
+        self.assertEqual(result[1].getPath(), './path3')
+        self.assertEqual(result[2].getSha(), '982')
+        self.assertEqual(result[2].getPath(), './some/other')
+
+
+
 class TestRead(unittest.TestCase):
     def setUp(self):
         self.addTypeEqualityFunc(ban.Entry, getEntryEqualityFunc(self))
@@ -52,12 +86,25 @@ class TestRead(unittest.TestCase):
         self.assertEqual(entries[0], expected)
 
 
-
-
     def testReadWithSpaces(self):
         """Test that paths with space are read properly"""
 
         buf = io.StringIO('0123456789012345678901234567890123456789012345678901234567890123 /path/to/file with spaces')
+
+        entries = ban.readEntries(buf)
+        expected = ban.Entry('0123456789012345678901234567890123456789012345678901234567890123', '/path/to/file with spaces')
+
+        self.assertEqual(entries[0], expected)
+
+
+    def testReadTwoSpaces(self):
+        '''
+        Two spaces are the separator between the hash and the file path.
+        Emited by sha256sum, two spaces mean that the file was read in a text mode,
+        as opposed to the * separator used for binary reading mode.
+        '''
+
+        buf = io.StringIO('0123456789012345678901234567890123456789012345678901234567890123  /path/to/file with spaces')
 
         entries = ban.readEntries(buf)
         expected = ban.Entry('0123456789012345678901234567890123456789012345678901234567890123', '/path/to/file with spaces')

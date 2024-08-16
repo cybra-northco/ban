@@ -13,6 +13,8 @@
 # Missing snapshot entry - means that the file that existed at a path and had a hash now either:
 #   - has the same hash but a different path (was moved)
 #   - has the same path but a different hash (was modified)
+# Hash index - a dictionary representation, where key is the hash and values are the paths
+
 
 import sys
 import logging
@@ -47,11 +49,20 @@ def isValidHash(word):
 
 
 def parseHashAndPath(line):
+    twoSpacePosition = line.find('  ')
+    if twoSpacePosition != -1:
+        # +2 because we want first char after two spaces
+        return line[:twoSpacePosition], line[twoSpacePosition+2:]
+
+    logging.error(f'Input line does not contain a normal two-space separator: "{line}"')
+
     spacePosition = line.find(' ')
-    if spacePosition == -1:
-        logging.error(f'Input line does not contain a space: "{line}"')
-        #raise SpaceNotFound(f'Input line does not contain a space: "{line}"')
-    return line[:spacePosition], line[spacePosition+1:]
+    if spacePosition != -1:
+        # +1 because we want the first char after the space
+        return line[:spacePosition], line[spacePosition+1:]
+
+    logging.error(f'Input line also does not contain a single-space separator: "{line}"')
+    return None, None
 
 
 
@@ -65,12 +76,19 @@ def readEntries(fileHandle):
             return entries
 
         fileHash, filePath = parseHashAndPath(line)
+        if not fileHash or not filePath:
+            logging.error('continuing to next line...')
+            continue
+
         if not isValidHash(fileHash):
             logging.error(f'found a weird line without hash: "{line}"')
             continue
 
         # The -1 and the very end removes the new line \n character introduced by the readline() method
-        newEntry = Entry(fileHash, filePath[:-1])
+        if filePath[-1] == '\n':
+            newEntry = Entry(fileHash, filePath[:-1])
+        else:
+            newEntry = Entry(fileHash, filePath)
         entries.append(newEntry)
 
 
@@ -87,12 +105,29 @@ def listToDict(listOfEntries):
             dic[entry.getSha()] = [entry.getPath()]
     return dic
 
+
+
 def getOldEntriesMissingFromNew(old, new):
     missing = []
     for sha in old:
         if not sha in new:
-            missing.append(Entry(sha, old[sha]))
+            for path in old[sha]:
+                missing.append(Entry(sha, path))
     return missing
+
+
+
+def keepPath(path, pathsToSkip):
+    for p in pathsToSkip:
+        logging.error(f'"{path}" startswith "{p}"')
+        if path.startswith(p):
+            return False
+    return True
+
+
+
+def filterEntries(entries, pathsToSkip):
+    return [x for x in entries if keepPath(x.getPath(), pathsToSkip)]
 
 
 
@@ -129,7 +164,11 @@ if __name__ == '__main__':
 
     # Find entries that are present in the old dictionary, but are missing in the second one:
     oldEntriesMissingFromNew = getOldEntriesMissingFromNew(oldHashMap, newHashMap)
-    for e in oldEntriesMissingFromNew: print(e)
+
+    pathsToSkip = ['./seagate-backup-2021-05-03/SteamLibrary']#/steamapps/common/Counter-Strike Global Offensive/']
+    missingEntriesFiltered = filterEntries(oldEntriesMissingFromNew, pathsToSkip)
+
+    for e in missingEntriesFiltered: print(e)
 
 
 
