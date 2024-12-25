@@ -1,0 +1,68 @@
+* Usage (so far)
+#+BEGIN_SRC sh
+  find . -type f -print0 | xargs -0 sha256sum | tee ~/recursive-sha256sum.txt
+  find . -type f -print0 | xargs -0 sha256sum | tee ~/4Tera-recursive-sha256sum.txt
+  find . -type f -print0 | xargs -0 sha256sum | tee ~/8Tera-recursive-sha256sum.txt
+#+END_SRC
+
+Then run `ban` on the generated files:
+#+BEGIN_SRC sh
+  python3 ban.py ~/4Tera-recursive-sha256sum.txt ~/8Tera-recursive-sha256sum.txt
+#+END_SRC
+
+* 25 Dec 2024
+** Background story on my backup drives
+A couple of days ago my Seagate drive with the primary copy of all files
+suffered issues. Some folders could not be opened, while others completely
+disappeared.
+All this happened under Windows.
+
+I have received a new 8 TB Seagate drive and now I am doing a complete copy
+of the old Expansion 8TB to this new Seagate.
+Old drive is exFAT.
+I've read on the internet that exFat is extremely prone to file loss when
+unplugged unexpectedly.
+Thus he new drive was formatted as APFS with Encryption.
+I will format the exFAT drive to APFS too, probably.
+** What do I expect from this tool
+
+* Bckup Analyzer (BAN)
+** Current status (probably somewhere in August 2024
+After running "find + sha256sum" on both old and new snapshots, I got
+two files.  The first file contains hashes and paths of the old
+snapshot, the second snapshot contains hashes and paths from the older
+snapshot.
+
+Now it is time to analyze the snapshots.  First thing to do was to
+check if there are hashes present in the old snapshot that are not
+there in the new shapshot.  That would mean that some files were lost
+between the two snapshot operations of the same folder.
+
+And yes, there was diff!
+
+Most of the hashes belonged to Capture One sidecar files.  I did some
+edits on my photos, between the first and the second snapshots, and
+that changed hashes of files.
+
+Okay, well, I am not sure if there is any value in those old versions,
+but I will save them anyway.
+
+* Tasks
+** TODO Implement proper command-line arguments
+** DONE Copy the changed files to a new location
+** DONE All paths contains a new line character =\n=
+The input files are read line-by-line.
+For some reason, python's =readline()= function returns a string with =\n= in it.
+Fix this behavior and also add a test for it.
+** Should the spaces in the file paths be escaped?
+Example: =01234 /path/to/file\ with\ spaces=
+* Rules
+** Hash, two spaces, file path
+Lines coming from the input files must start with a hash, then have a single space, and the rest is considered a path.
+=01234 /path/to/file=
+The lines are not allowed to start with a space:
+=\ 01234 /path/to/file=
+Or to have multiple spaces between the hash and the path:
+=01234  /path/to/file=
+It is allowed, though, to have paths with spaces:
+=01234 /path/to/file with spaces=
