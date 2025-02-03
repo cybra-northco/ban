@@ -69,6 +69,31 @@ class TestFiltering(unittest.TestCase):
         self.assertEqual(result[2].get_sha(), '982')
         self.assertEqual(result[2].get_path(), './some/other')
 
+class TestAppleDoubleeFilesFiltering(unittest.TestCase):
+    def teastAllAllowed(self):
+        entries = [ban.Entry('123', './path1'),
+                   ban.Entry('234', './p[ath2')]
+        result = ban.filter_out_apple_doubles(entries)
+
+        self.assertEqual(len(result), 2)
+        self.assertEqual(result[0].get_sha(), '123')
+        self.assertEqual(result[0].get_path(), './path1')
+        self.assertEqual(result[1].get_sha(), '234')
+        self.assertEqual(result[1].get_path(), './path2')
+
+    def testFilterOutSome(self):
+        entries = [ban.Entry('123', './path1'),
+                   ban.Entry('143', './._path1'),
+                   ban.Entry('345', './some/path.jpg'),
+                   ban.Entry('945', './some/._path.jpg'),
+                   ban.Entry('903', './other/._file.dng')]
+        result = ban.filter_out_apple_doubles(entries)
+
+        self.assertEqual(len(result), 2)
+        self.assertEqual(result[0].get_sha(), '123')
+        self.assertEqual(result[0].get_path(), './path1')
+        self.assertEqual(result[1].get_sha(), '345')
+        self.assertEqual(result[1].get_path(), './some/path.jpg')
 
 
 class TestRead(unittest.TestCase):

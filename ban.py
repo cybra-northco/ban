@@ -1,6 +1,7 @@
 # ban - backup analyzer
 # Given two files with a format
-#   <checksum> <file path>
+#   <checksum>  <file path>
+# The two spaces between the checksum and the file path are inserted by sha256sum as a marker that the file was read in a text mode.
 # Will output:
 #  1. Checksums and their file paths that are present in the first file but not in the second one
 #  2. Bash commands to copy the changed files to a different location
@@ -12,7 +13,7 @@
 # Snapshot entry - a representation of a file from a snapshot.
 #   The snapshot entry has a hash and a path inside of the snapshot.
 # Snapshot diff - a list of snapshot entries that exist in one snapshot,
-#   but are missing in another one.
+#   but are missing from another one.
 # Missing snapshot entry - means that the file that existed at a path and had a hash now either:
 #   - has the same hash but a different path (was moved)
 #   - has the same path but a different hash (was modified)
@@ -23,6 +24,7 @@ import sys
 import os
 import logging
 import argparse
+import os.path
 
 
 
@@ -111,12 +113,12 @@ def list_to_dict(entries):
     return dic
 
 
-
-def get_missing_entries(old, new):
+# Iterates over old entries and collects those missing from the late
+def get_early_missing_from_late(early, late):
     missing = []
-    for sha in old:
-        if not sha in new:
-            for path in old[sha]:
+    for sha in early:
+        if not sha in late:
+            for path in early[sha]:
                 missing.append(Entry(sha, path))
     return missing
 
@@ -128,10 +130,20 @@ def keep_path(path, paths_to_skip):
             return False
     return True
 
+def apple_double(path):
+    dotUnderscore = os.path.basename(path).startswith('._')
+    dsStore = os.path.basename(path) == ".DS_Store"
+    return dotUnderscore or dsStore
+
 
 
 def filter_entries(entries, paths_to_skip):
     return [x for x in entries if keep_path(x.get_path(), paths_to_skip)]
+
+# The AppleDoubles files are the dot underscore ._ files craeted for each file by MacOS
+# They mess up the whole diffing mechanism
+def filter_out_apple_doubles(entries):
+    return [x for x in entries if not apple_double(x.get_path())]
 
 
 
@@ -186,19 +198,34 @@ if __name__ == '__main__':
     except SpaceNotFound as e:
         raise RuntimeError(f'Late hashes file has a bad line: {str(e)}')
 
-    print(f'Number of early entries: {len(early_entries)}')
-    print(f'Number of late entries: {len(late_entries)}')
+    early_entries_count = len(early_entries)
+    late_entries_count = len(late_entries)
+    print(f'Number of early entries: {early_entries_count} {args.early_hashes.name}')
+    print(f'Number of late entries: {late_entries_count} {args.late_hashes.name}')
+    print(f'Difference in hashes number: {late_entries_count - early_entries_count}')
 
     # Create a dictionary of entries
     early_hash_map = list_to_dict(early_entries)
     late_hash_map = list_to_dict(late_entries)
 
     # Find entries that are present in the old dictionary, but are missing in the second one:
-    missing_entries = get_missing_entries(early_hash_map, late_hash_map)
+    missing_entries = get_early_missing_from_late(early_hash_map, late_hash_map)
+
+    print(f'Hashes present in early but missing from late: {len(missing_entries)}')
 
     filtered_entries = filter_entries(missing_entries, args.skip)
 
-    for e in filtered_entries: print(bash_print_missing(e, '/node/save/'))
+    print(f'Number of Hashes that were filtered out: {len(missing_entries) - len(filtered_entries)}')
+
+    filtered_without_apple_doubles = filter_out_apple_doubles(filtered_entries)
+
+    print(f'Number of apple doubles: {len(filtered_entries) - len(filtered_without_apple_doubles)}')
+
+    print(f'Number of actually missing entries: {len(filtered_without_apple_doubles)}')
+
+    #for e in filtered_entries: print(bash_print_missing(e, '/node/save/'))
+    #for e in filtered_without_apple_doubles: print(bash_print_missing(e, ''))
+    for e in filtered_without_apple_doubles: print(e)
 
 
 
