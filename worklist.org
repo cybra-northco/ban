@@ -10,6 +10,42 @@ Then run `ban` on the generated files:
   python3 ban.py ~/4Tera-recursive-sha256sum.txt ~/8Tera-recursive-sha256sum.txt
 #+END_SRC
 
+** Usecase: creating a backup of a folder
+I have a folder A and I just copied it to a backup location B.
+The two folders should be absolutely the same, right?
+How this tool should check this:
+  - are all files that are present in A also present in B?
+  - are all files that are present in B also present in A?
+  - are all the contents of all the files the same?
+
+** Usecase: comparing two snapshots
+I have a source folder.
+At some point in the past I created a backup A of the source folder and placed it on an external drive.
+As time passed, I added new files to my source folder and modified some of the existing files.
+Then I make another backup B of the source folder and place it onto another external drive.
+
+Now I wish to see what changed in between these backups.
+Comparing the two backups helps to detect corruption on either of the external backup drives or on the source drive.
+For example, after the backup A was done, cosmic rays corrupted a random file on the source drive.
+Comparing the backup A and backup B shows a difference in that file.
+Once I see that the file changed, I can inspect and hopefully detect the corruption.
+
+* 31 Jan 2024
+I just plugged in the primary Seagate drive into Windows and Windows seems to have repaired it!
+WTF man.
+This is the drive that triggered all that panicky backups a month ago.
+
+* 27 Dec 2024
+It looks like I've used `sha256sum` always in text mode.
+But the internet suggests that digital preservations endeavours should always use the binary reading mode.
+Sources:
+ - https://unix.stackexchange.com/questions/127959/md5sum-command-binary-and-text-mode/127961#127961
+
+But, the Stack Overflow suggests that on GNU systems there is absolutely no difference whether a file
+was read in a text or binary mode.
+Same for Windows.
+I could not find any info on this for MacOS though.
+
 * 25 Dec 2024
 ** Background story on my backup drives
 A couple of days ago my Seagate drive with the primary copy of all files
